@@ -125,3 +125,70 @@ FROM well_pollution
 WHERE description
 IN ('Parasite: Cryptosporidium', 'biologically contaminated')
 OR (results = 'Clean' AND biological > 0.01);
+
+
+WITH town_totals AS (
+
+SELECT 
+    province_name,
+    town_name,
+    SUM(number_of_people_served) AS total_ppl_serv
+FROM 
+    combined_analysis_table
+GROUP BY 
+    province_name,
+    town_name
+)
+SELECT
+    ct.province_name,
+    ct.town_name,
+    ROUND((SUM(CASE WHEN type_of_water_source = 'river' THEN number_of_people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS river,
+    ROUND((SUM(CASE WHEN type_of_water_source = 'shared_tap' THEN number_of_people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS shared_tap,
+    ROUND((SUM(CASE WHEN type_of_water_source = 'tap_in_home' THEN number_of_people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS tap_in_home,
+    ROUND((SUM(CASE WHEN type_of_water_source = 'tap_in_home_broken' THEN number_of_people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS tap_in_home_broken,
+    ROUND((SUM(CASE WHEN type_of_water_source = 'well' THEN number_of_people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS well
+FROM
+    combined_analysis_table ct
+JOIN 
+    town_totals tt ON ct.province_name = tt.province_name
+    AND ct.town_name = tt.town_name
+WHERE ct.province_name = 'Amanzi'
+GROUP BY
+    ct.province_name,
+    ct.town_name
+ORDER BY
+    ct.town_name;
+
+
+
+WITH town_totals AS (
+
+SELECT
+    province_name,
+    town_name,
+    SUM(number_of_people_served) AS total_ppl_serv
+FROM
+    combined_analysis_table
+GROUP BY
+    province_name,
+    town_name
+)
+SELECT
+    ct.province_name,
+    ct.town_name,
+    ROUND((SUM(IF(type_of_water_source = 'river', number_of_people_served, 0)) * 100.0 / tt.total_ppl_serv), 0)  AS river,
+    ROUND((SUM(IF(type_of_water_source = 'shared_tap', number_of_people_served, 0)) * 100.0 / tt.total_ppl_serv), 0) AS shared_tap,
+    ROUND((SUM(IF(type_of_water_source = 'tap_in_home', number_of_people_served, 0)) * 100.0 / tt.total_ppl_serv), 0) AS tap_in_home,
+    ROUND((SUM(IF(type_of_water_source = 'tap_in_home_broken', number_of_people_served, 0)) * 100.0 / tt.total_ppl_serv), 0) AS tap_in_home_broken,
+    ROUND((SUM(IF(type_of_water_source = 'well', number_of_people_served, 0)) * 100.0 / tt.total_ppl_serv), 0) AS well,
+    (ROUND((SUM(IF(type_of_water_source = 'tap_in_home', number_of_people_served, 0)) * 100.0 / tt.total_ppl_serv), 0) + ROUND((SUM(IF(type_of_water_source = 'tap_in_home_broken', number_of_people_served, 0)) * 100.0 / tt.total_ppl_serv), 0)) as my_sum
+FROM
+    combined_analysis_table ct
+JOIN
+    town_totals tt ON ct.province_name = tt.province_name
+    AND ct.town_name = tt.town_name
+GROUP BY
+    ct.province_name,
+    ct.town_name
+ORDER BY
+    ct.town_name;
